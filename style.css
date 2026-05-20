@@ -1,0 +1,176 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: #eef2f7;
+    color: #1f2937;
+}
+
+header {
+    background: linear-gradient(135deg, #172554, #2563eb);
+    color: white;
+    padding: 35px 50px;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 32px;
+}
+
+header p {
+    margin-top: 8px;
+    opacity: 0.9;
+}
+
+main {
+    padding: 30px 50px;
+}
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    margin-bottom: 25px;
+}
+
+.card {
+    background: white;
+    padding: 22px;
+    border-radius: 18px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.card h2 {
+    margin: 0 0 10px;
+    font-size: 15px;
+    color: #667085;
+}
+
+.card p {
+    margin: 0;
+    font-size: 30px;
+    font-weight: 800;
+}
+
+.destaque p {
+    font-size: 46px;
+    color: #2563eb;
+}
+
+#statusAtual {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: bold;
+    color: white;
+}
+
+.painel {
+    background: white;
+    padding: 25px;
+    border-radius: 18px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.grafico {
+    height: 250px;
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    padding: 20px;
+    margin-bottom: 25px;
+    background: #f8fafc;
+    border-radius: 14px;
+    overflow-x: auto;
+}
+
+.barra-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 24px;
+}
+
+.barra {
+    width: 22px;
+    border-radius: 8px 8px 0 0;
+}
+
+.barra-container small {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #667085;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 13px;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+}
+
+th {
+    color: #667085;
+    font-size: 13px;
+    text-transform: uppercase;
+}
+
+.badge {
+    padding: 6px 10px;
+    border-radius: 999px;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.normal {
+    background: #16a34a;
+}
+
+.atencao {
+    background: #d97706;
+}
+
+.alerta {
+    background: #dc2626;
+}
+
+.critico {
+    background: #991b1b;
+}
+
+@media (max-width: 900px) {
+    .cards {
+        grid-template-columns: 1fr;
+    }
+
+    main, header {
+        padding: 25px;
+    }
+
+
+}
+
+.botao-excel {
+    display: inline-block;
+    margin-bottom: 20px;
+    padding: 12px 18px;
+    background: #16a34a;
+    color: white;
+    text-decoration: none;
+    border-radius: 10px;
+    font-weight: bold;
+}
+
+.botao-excel:hover {
+    background: #15803d;
+}

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard de Monitoramento de Ruído</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header>
+    <h1>Dashboard de Monitoramento de Ruído Industrial</h1>
+    <p>Monitoramento em tempo real</p>
+</header>
+
+<main>
+    <section class="cards">
+        <div class="card destaque">
+            <h2>Nível Atual</h2>
+            <p id="nivelAtual">-- dB</p>
+            <span id="statusAtual">Aguardando dados...</span>
+        </div>
+
+        <div class="card">
+            <h2>Média Recente</h2>
+            <p id="media">-- dB</p>
+        </div>
+
+        <div class="card">
+            <h2>Pico Registrado</h2>
+            <p id="pico">-- dB</p>
+        </div>
+
+        <div class="card">
+            <h2>Última Atualização</h2>
+            <p id="ultimaAtualizacao">--</p>
+        </div>
+    </section>
+
+    <section class="painel">
+        <h2>Histórico Recente</h2>
+
+<a href="/relatorio_excel" class="botao-excel">
+    Gerar Relatório Excel
+</a>
+
+        <div class="grafico" id="grafico"></div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Horário</th>
+                    <th>Operador</th>
+                    <th>Decibéis</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="tabelaDados">
+                <tr>
+                    <td colspan="4">Aguardando leituras...</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+</main>
+
+<script>
+async function carregarDados() {
+    try {
+        const resposta = await fetch("/api/ultimas");
+        const dados = await resposta.json();
+
+        if (dados.length === 0) return;
+
+        const ultima = dados[0];
+        const valores = dados.map(item => item.decibeis);
+
+        document.getElementById("nivelAtual").innerText = ultima.decibeis.toFixed(1) + " dB";
+        document.getElementById("ultimaAtualizacao").innerText = ultima.data_hora;
+
+        const media = valores.reduce((a, b) => a + b, 0) / valores.length;
+        const pico = Math.max(...valores);
+
+        document.getElementById("media").innerText = media.toFixed(1) + " dB";
+        document.getElementById("pico").innerText = pico.toFixed(1) + " dB";
+
+        const status = document.getElementById("statusAtual");
+
+        if (ultima.decibeis >= 95) {
+            status.innerText = "ALERTA CRÍTICO: exposição elevada";
+            status.className = "critico";
+        } else if (ultima.decibeis >= 90) {
+            status.innerText = "ALERTA: nível acima do recomendado";
+            status.className = "alerta";
+        } else if (ultima.decibeis >= 85) {
+            status.innerText = "ATENÇÃO: nível próximo ao limite";
+            status.className = "atencao";
+        } else {
+            status.innerText = "Nível dentro da faixa monitorada";
+            status.className = "normal";
+        }
+
+        atualizarTabela(dados);
+        atualizarGrafico(dados);
+
+    } catch (erro) {
+        console.error("Erro ao carregar dados:", erro);
+    }
+}
+
+function classificarStatus(db) {
+    if (db >= 95) return ["Crítico", "critico"];
+    if (db >= 90) return ["Alerta", "alerta"];
+    if (db >= 85) return ["Atenção", "atencao"];
+    return ["Normal", "normal"];
+}
+
+function atualizarTabela(dados) {
+    const tabela = document.getElementById("tabelaDados");
+    tabela.innerHTML = "";
+
+    dados.forEach(item => {
+        const [texto, classe] = classificarStatus(item.decibeis);
+
+        tabela.innerHTML += `
+            <tr>
+                <td>${item.data_hora}</td>
+                <td>Operador ${item.operador}</td>
+                <td>${item.decibeis.toFixed(1)} dB</td>
+                <td><span class="badge ${classe}">${texto}</span></td>
+            </tr>
+        `;
+    });
+}
+
+function atualizarGrafico(dados) {
+    const grafico = document.getElementById("grafico");
+    grafico.innerHTML = "";
+
+    const dadosInvertidos = [...dados].reverse();
+
+    dadosInvertidos.forEach(item => {
+        const altura = Math.min(item.decibeis, 110);
+        const [texto, classe] = classificarStatus(item.decibeis);
+
+        grafico.innerHTML += `
+            <div class="barra-container">
+                <div class="barra ${classe}" style="height:${altura * 2}px" title="${item.decibeis.toFixed(1)} dB"></div>
+                <small>${item.decibeis.toFixed(0)}</small>
+            </div>
+        `;
+    });
+}
+
+setInterval(carregarDados, 2000);
+carregarDados();
+</script>
+
+</body>
+</html>
