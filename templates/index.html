@@ -39,9 +39,13 @@
     <section class="painel">
         <h2>Histórico Recente</h2>
 
-<a href="/relatorio_excel" class="botao-excel">
+        <button onclick="conectarESP32()" class="botao-excel">
+            Conectar ESP32 via USB
+        </button>
+
+        <button onclick="exportarExcel()" class="botao-excel">
     Gerar Relatório Excel
-</a>
+</button>
 
         <div class="grafico" id="grafico"></div>
 
@@ -64,54 +68,61 @@
 </main>
 
 <script>
-async function carregarDados() {
-    try {
-        const resposta = await fetch("/api/ultimas");
-        const dados = await resposta.json();
-
-        if (dados.length === 0) return;
-
-        const ultima = dados[0];
-        const valores = dados.map(item => item.decibeis);
-
-        document.getElementById("nivelAtual").innerText = ultima.decibeis.toFixed(1) + " dB";
-        document.getElementById("ultimaAtualizacao").innerText = ultima.data_hora;
-
-        const media = valores.reduce((a, b) => a + b, 0) / valores.length;
-        const pico = Math.max(...valores);
-
-        document.getElementById("media").innerText = media.toFixed(1) + " dB";
-        document.getElementById("pico").innerText = pico.toFixed(1) + " dB";
-
-        const status = document.getElementById("statusAtual");
-
-        if (ultima.decibeis >= 95) {
-            status.innerText = "ALERTA CRÍTICO: exposição elevada";
-            status.className = "critico";
-        } else if (ultima.decibeis >= 90) {
-            status.innerText = "ALERTA: nível acima do recomendado";
-            status.className = "alerta";
-        } else if (ultima.decibeis >= 85) {
-            status.innerText = "ATENÇÃO: nível próximo ao limite";
-            status.className = "atencao";
-        } else {
-            status.innerText = "Nível dentro da faixa monitorada";
-            status.className = "normal";
-        }
-
-        atualizarTabela(dados);
-        atualizarGrafico(dados);
-
-    } catch (erro) {
-        console.error("Erro ao carregar dados:", erro);
-    }
-}
+let leiturasSerial = [];
 
 function classificarStatus(db) {
     if (db >= 95) return ["Crítico", "critico"];
     if (db >= 90) return ["Alerta", "alerta"];
     if (db >= 85) return ["Atenção", "atencao"];
     return ["Normal", "normal"];
+}
+
+function atualizarDashboard(dados) {
+    if (dados.length === 0) return;
+
+    const ultima = dados[0];
+    const valores = dados.map(item => item.decibeis);
+
+    document.getElementById("nivelAtual").innerText = ultima.decibeis.toFixed(1) + " dB";
+    document.getElementById("ultimaAtualizacao").innerText = ultima.data_hora;
+
+    const media = valores.reduce((a, b) => a + b, 0) / valores.length;
+    const pico = Math.max(...valores);
+
+    document.getElementById("media").innerText = media.toFixed(1) + " dB";
+    document.getElementById("pico").innerText = pico.toFixed(1) + " dB";
+
+    const status = document.getElementById("statusAtual");
+    const [texto, classe] = classificarStatus(ultima.decibeis);
+
+    if (classe === "critico") {
+        status.innerText = "ALERTA CRÍTICO: exposição elevada";
+    } else if (classe === "alerta") {
+        status.innerText = "ALERTA: nível acima do recomendado";
+    } else if (classe === "atencao") {
+        status.innerText = "ATENÇÃO: nível próximo ao limite";
+    } else {
+        status.innerText = "Nível dentro da faixa monitorada";
+    }
+
+    status.className = classe;
+
+    atualizarTabela(dados);
+    atualizarGrafico(dados);
+}
+
+async function carregarDados() {
+    try {
+        const resposta = await fetch("/api/ultimas");
+        const dados = await resposta.json();
+
+        if (!Array.isArray(dados) || dados.length === 0) return;
+
+        atualizarDashboard(dados);
+
+    } catch (erro) {
+        console.error("Erro ao carregar dados:", erro);
+    }
 }
 
 function atualizarTabela(dados) {
@@ -151,8 +162,110 @@ function atualizarGrafico(dados) {
     });
 }
 
+async function conectarESP32() {
+    if (!("serial" in navigator)) {
+        alert("Seu navegador não suporta Web Serial. Use Google Chrome ou Microsoft Edge.");
+        return;
+    }
+
+    try {
+        const port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 115200 });
+
+        document.getElementById("statusAtual").innerText = "ESP32 conectado via USB";
+        document.getElementById("statusAtual").className = "normal";
+
+        const decoder = new TextDecoderStream();
+        port.readable.pipeTo(decoder.writable);
+
+        const reader = decoder.readable.getReader();
+        let buffer = "";
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            buffer += value;
+            const linhas = buffer.split("\n");
+            buffer = linhas.pop();
+
+            for (const linha of linhas) {
+                const texto = linha.trim();
+
+                if (texto.startsWith("DB:")) {
+                    const valor = parseFloat(texto.replace("DB:", "").trim());
+
+                    if (!isNaN(valor)) {
+                        const agora = new Date().toLocaleString("pt-BR");
+
+                        leiturasSerial.unshift({
+                            operador: "1",
+                            decibeis: valor,
+                            data_hora: agora
+                        });
+
+                        leiturasSerial = leiturasSerial.slice(0, 30);
+
+                        atualizarDashboard(leiturasSerial);
+                    }
+                }
+            }
+        }
+
+    } catch (erro) {
+        console.error("Erro ao conectar ESP32:", erro);
+        alert("Não foi possível conectar ao ESP32. Feche o Serial Monitor do Arduino e tente de novo.");
+    }
+}
+
 setInterval(carregarDados, 2000);
 carregarDados();
+
+function exportarExcel() {
+    const dados = leiturasSerial.length > 0 ? leiturasSerial : [];
+
+    if (dados.length === 0) {
+        alert("Ainda não há medições para exportar.");
+        return;
+    }
+
+    let tabela = `
+        <table>
+            <tr>
+                <th>Horario</th>
+                <th>Operador</th>
+                <th>Decibeis</th>
+                <th>Status</th>
+            </tr>
+    `;
+
+    dados.forEach(item => {
+        const [status] = classificarStatus(item.decibeis);
+
+        tabela += `
+            <tr>
+                <td>${item.data_hora}</td>
+                <td>Operador ${item.operador}</td>
+                <td>${item.decibeis.toFixed(1)}</td>
+                <td>${status}</td>
+            </tr>
+        `;
+    });
+
+    tabela += `</table>`;
+
+    const arquivo = new Blob([tabela], {
+        type: "application/vnd.ms-excel"
+    });
+
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(arquivo);
+    link.download = "relatorio_ruido.xls";
+    link.click();
+
+    URL.revokeObjectURL(link.href);
+}
+
 </script>
 
 </body>
