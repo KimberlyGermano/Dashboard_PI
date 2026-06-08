@@ -160,17 +160,13 @@ th {
 
 }
 
-.botao-excel {
-    display: inline-block;
-    margin-bottom: 20px;
-    padding: 12px 18px;
-    background: #16a34a;
-    color: white;
-    text-decoration: none;
-    border-radius: 10px;
-    font-weight: bold;
+button.botao-excel {
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    margin-right: 10px;
 }
 
-.botao-excel:hover {
+button.botao-excel:hover {
     background: #15803d;
 }
